@@ -1,0 +1,13 @@
+https://www.neuron.yale.edu/neuron/static/new_doc/modelspec/programmatic/mechanisms/nmodl.html?highlight=default%20sodium%20concentrations
+
+https://stellar.mit.edu/S/course/6/fa17/6.021/courseMaterial/topics/topic9/readings/2017_NEURON_Guide_Part_I/2017_NEURON_Guide_Part_I.pdf
+
+https://stellar.mit.edu/S/course/6/fa17/6.021/courseMaterial/topics/topic9/resource/2017_NEURON_Guide_Part_II/2017_NEURON_Guide_Part_II.pdf
+
+https://stellar.mit.edu/S/course/6/fa17/6.021/courseMaterial/topics/topic9/resource/2017_NEURON_Guide_Appendix/2017_NEURON_Guide_Appendix.pdf
+
+https://www.neuron.yale.edu/neuron/static/docs/programming/hoc_slides.pdf
+
+http://web.mit.edu/neuron_v7.4/nrntuthtml/tutorial/tutA.html
+
+http://web.mit.edu/neuron_v7.4/nrntuthtml/tutorial/tutA.html#start-with-program
