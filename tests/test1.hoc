@@ -1,0 +1,32 @@
+load_file("nrngui.hoc")
+
+// Model specification
+//topology
+create soma
+access soma
+
+//geometry
+soma {
+	L = 25
+	diam = 25
+	nseg = 1 // NB: set based on GUI-built CellBuilder Model
+}
+
+// biophysics
+forall{
+	Ra = 35.4
+	cm = 1
+}
+
+soma {
+	insert hht //can modify the kinetic HH model here, i.e. kn_hht = 0.5
+}
+
+
+//stimulation
+objectvar stim
+stim = new IClamp(.5)
+
+stim.del = 100
+stim.dur - 100
+stim.amp = 0.1

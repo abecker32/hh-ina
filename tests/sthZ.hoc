@@ -1,0 +1,66 @@
+//topology
+create soma // creates the soma object
+access soma // defines default section
+//define geometry parameters
+soma {
+    L = 25
+    diam = 25
+    nseg = 1 //single segment for discretization
+}
+//define biophysical properties
+forall{
+Ra = 35.4
+cm = 1 }
+soma {
+    insert hh
+    nai = 10
+    // can modify HH here, i.e. could set gnabar_hh = 0.150
+}
+print nai
+
+// instrumentation
+objref stim
+soma stim = new IClamp(0.5)
+stim.del = 5
+stim.dur = 0.1
+stim.amp = 1.4
+
+// graphical display
+// plot voltages
+objref g
+g = new Graph()
+g.size(0,20,-80,40)
+//format: "variable", color (from palette), brush (thickness)
+g.addvar("soma.v(0.5)",1,1)
+//plot currents
+objref h
+h = new Graph()
+h.size(0,20,-1,1)
+h.addvar("soma.i_cap(0.5)", 1,1) //black
+h.addvar("soma.ik(0.5)", 2,1) //red
+h.addvar("soma.ina(0.5)", 3,1) //blue
+h.addvar("soma.il_hh(0.5)", 4,1) //green
+
+// stimulation constants (from default RunControl)
+dt = 0.025
+tstop = 20
+v_init = -65
+//proc = function that does not return a value
+proc initialize() {
+    finitialize(v_init)
+    fcurrent() }
+proc integrate() {
+    g.begin()
+    h.begin()
+    while (t<tstop){
+        fadvance()
+        g.plot(t)
+        h.plot(t)
+    }
+    g.flush()
+    h.flush()
+}
+proc go() {
+    initialize()
+    integrate()
+}
