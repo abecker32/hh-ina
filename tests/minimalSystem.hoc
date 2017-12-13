@@ -1,25 +1,20 @@
-load_file("nrngui.hoc")
-
 //topology
 create soma // creates the soma object
-access soma // defines default section
+access soma // defines default section for GUI compatibility
 //define geometry parameters
 soma {
-    L = 25
-    diam = 25
-    nseg = 1 //single segment for discretization
+L = 25
+diam = 25
+nseg = 1 //single segment for discretization
 }
 //define biophysical properties
 forall{
 Ra = 35.4
-cm = 1 }
-soma {
-    insert hh
-    nai = 10
-    // can modify HH here, i.e. could set gnabar_hh = 0.150
+cm = 1
 }
-print nai
-
+soma {
+insert hh
+}
 // instrumentation
 objref stim
 soma stim = new IClamp(0.5)
