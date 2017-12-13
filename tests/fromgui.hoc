@@ -1,0 +1,111 @@
+proc celldef() {
+  topol()
+  subsets()
+  geom()
+  biophys()
+  geom_nseg()
+}
+
+create soma
+
+proc topol() { local i
+  basic_shape()
+}
+proc basic_shape() {
+  soma {pt3dclear() pt3dadd(0, 0, 0, 1) pt3dadd(15, 0, 0, 1)}
+}
+
+objref all, has_hh
+proc subsets() { local i
+  objref all, has_hh
+  all = new SectionList()
+    soma all.append()
+
+  has_hh = new SectionList()
+    soma has_hh.append()
+
+}
+proc geom() {
+  forsec all {  }
+  soma {  L = 25  diam = 25  }
+}
+proc geom_nseg() {
+  forsec all { nseg = int((L/(0.1*lambda_f(100))+.999)/2)*2 + 1  }
+}
+proc biophys() {
+  soma {
+    Ra = 35.4
+    cm = 1
+    insert hh
+      gnabar_hh = 0.12
+      gkbar_hh = 0.036
+      gl_hh = 0.0003
+      el_hh = -54.3
+    nai = 60
+  }
+}
+access soma
+
+celldef()
+
+/////////////
+/*objref stim
+soma stim = new IClamp(0.5)
+stim.del = 0
+stim.dur = 0.5
+stim.amp = 1*/
+
+
+// plot voltages format: "variable", color (from palette), brush (thickness)
+objref g
+g = new Graph()
+g.size(0,2,-80,80)
+g.addvar("soma.v(0.5)",1,1)
+g.addvar("soma.nai(0.5)",2,1)
+
+objref h
+h = new Graph()
+h.size(0,2,-2,2)
+h.addvar("soma.ina(0.5)",1,1)
+h.addvar("soma.ik(0.5)",2,1)
+h.addvar("soma.il_hh(0.5)",3,1)
+h.addvar("soma.i_cap(0.5)",4,1)
+
+objref k
+k = new Graph()
+k.size(0,2,-2,2)
+k.addvar("soma.m_hh(0.5)",1,1)
+k.addvar("soma.n_hh(0.5)",2,1)
+k.addvar("soma.h_hh(0.5)",3,1)
+
+// stimulation constants (from default RunControl)
+dt = 0.025
+tstop = 20
+v_init = -65
+//proc = function that does not return a value
+proc initialize() {
+  finitialize(v_init)
+  fcurrent()
+}
+
+proc integrate() {
+  g.begin()
+  h.begin()
+  k.begin()
+  while (t<tstop){
+    fadvance()
+    g.plot(t)
+    h.plot(t)
+    k.plot(t)
+  }
+  g.flush()
+  h.flush()
+  k.flush()
+}
+
+proc go() {
+    initialize()
+    integrate()
+}
+
+
