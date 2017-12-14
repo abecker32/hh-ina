@@ -1,0 +1,518 @@
+//--------------------------------------------------------------------------------------//
+//////////////////////////////////////////////////////////////////////////////////////////
+//------------------------------------INICIO DE CODIGO----------------------------------//
+/*
+ESTE PROGRAMA PERMITE ANALIZAR LOS PARÃMETROS ASOCIADOS A UN AXÃ“N NO MIELINADO ESTIMULADO
+EN UNO DE SUS EXTREMOS. SE PUEDEN MEDIR LOS VALORES DE CONDUCTANCIAS, CORRIENTES,POTENCIAL
+DE MEMBRANA Y PROBABILIDADES DE ACTIVACIÃ“N DE CANALES EN UN PUNTO PREESTABLECIDO ENTRE 0 Y
+1 (elct_med).
+Autor: Oscar Emilio Hernandez Bustos
+Profesor de tiempo completo, Universidad del Norte, Barranquilla, Colombia
+*/
+//--------------------------------------------------------------------------------------//
+//////////////////////////////////////////////////////////////////////////////////////////----Block 1
+//--------------------------------------CREANDO GEOMETRIA-------------------------------//
+/*
+La geometrÃ­a simulada aquÃ­ corresponde a un axÃ³n simple no mielinado.
+*/
+create soma
+soma.L=25
+soma.diam=25
+soma.nseg=50
+
+proc geometria(){
+soma.L=$1
+soma.diam=$2
+soma.nseg=$3
+}
+
+proc geometria_def(){
+soma.L=50
+soma.diam=2.7
+soma.nseg=1000
+}
+//--------------------------------------------------------------------------------------//
+//////////////////////////////////////////////////////////////////////////////////////////----Block 2
+//-------------------------------------PARAMETROS ACTIVOS-------------------------------//
+/*
+Los parÃ¡metros activos que simulan en esta secciÃ³n del cÃ³digo, corresponden a los canales
+de sodio y potasio al estilo Hodgkin y Huxley incorporados en NEURON.
+*/
+soma insert hh
+soma insert pas
+nao=440
+nai=50
+ko=20
+ki=400
+proc param_activos(){
+gnabar_hh=$1
+gkbar_hh=$2
+nao=$3
+nai=$4
+ko=$5
+ki=$6
+ena=(8.314*(273.15+celsius)/96485.3)*(log(nao/nai))*1000
+ek=(8.314*(273.15+celsius)/96485.3)*(log(ko/ki))*1000
+//v_rest_mV=(ek*gk_hh+ena*gna_hh+el_hh*gl_hh)/(gk_hh+gna_hh+gl_hh)
+}
+
+proc reset_activos(){
+gnabar_hh=0
+gkbar_hh=0
+}
+
+proc defecto_activos(){
+gnabar_hh=0.12
+gkbar_hh=0.036
+nao=140
+nai=10
+ko=2.5
+ki=54.4
+}
+//---------------------------------------------------------------------------------------//
+///////////////////////////////////////////////////////////////////////////////////////////
+//-----------------------------------PARAMETROS PASIVOS----------------------------------//
+/*
+Las propiedades pasivas se refieren a la conductancia de fuga o leak
+*/
+gl_hh=0.0003
+forall cm=1
+forall Ra=1
+
+ena=(8.314*(273.15+celsius)/96485.3)*(log(nao/nai))*1000
+ek=(8.314*(273.15+celsius)/96485.3)*(log(ko/ki))*1000
+//---------------------------------------------------------------------PROCESO PARA INICIAR
+/*
+Con el proceso inicio(), como su nombre lo indica se inicia la simulaciÃ³n. Pero antes se 
+definen y calculan los siguientes parÃ¡metros a partir de las formulas clÃ¡sicas obtenidas de 
+la literatura:
+1. Resistencia especifica de membrana: Rm=1/gl_hh. gl_hh es la conductancia especifica de 
+membrana
+2. Constante de espacio: LAMBDA=sqrt[Rm*d/(4*Ra)]. se multiplica por 1e-2 para obtener el 
+resultado en cm
+3. Constante de tiempo: TAU=cm*Rm. Se multiplica por 1e-3 para obtener el resultado en ms
+4. Velocidad de propagaciÃ³n del potencial de acciÃ³n: VELOCIDAD=LAMBDA/TAU. se multiplica 
+por 10 para obtener el resultado en m/s
+Por ultimo se corre el programa y luego se mejora la vista de los grÃ¡ficos que se realizaran
+*/
+//--------------------------------------------------------------Procesos ParÃ¡metros pasivos
+proc param_pas(){
+gl_hh=$1
+cm=$2
+Ra=$3
+}
+proc reset_pas(){
+gl_hh=0.0003
+cm=0.1
+Ra=1
+}
+
+proc defecto_pas(){
+gl_hh=0.0003
+cm=1
+Ra=35.4
+}
+//---------------------------------------------------------------------------------------//
+///////////////////////////////////////////////////////////////////////////////////////////----Block 3
+//--------------------------------ELECTRODO DE ESTIMULACIÃ“N------------------------------//
+/*
+AquÃ­ se simula un electrodo de estimulaciÃ³n. Este inyecta a un extremo del axÃ³n un estimulo
+de corriente constante durante un corto tiempo para despolarizar la membrana y por lo tanto
+generar la propagaciÃ³n de un potencial de acciÃ³n.
+*/
+numeromax_estimulos=100
+objref icl[numeromax_estimulos]
+for i=0, numeromax_estimulos-1{
+soma icl[i]=new IClamp(0)
+}
+aa=numeromax_estimulos
+proc estimulo(){
+icl[0].amp=$1
+icl[0].dur=$2
+icl[0].del=$3
+t_interp=$4
+num_estim=$5
+for i=1,num_estim-1{
+icl[i].amp=icl[0].amp
+icl[i].dur=icl[0].dur
+icl[i].del=icl[0].del+(icl[0].dur+t_interp)*i
+}
+for i=num_estim,numeromax_estimulos-1{
+icl[i].amp=0
+} 
+aa=$5
+}
+
+objref box_estim
+box_estim=new VBox()
+box_estim.intercept(1)
+
+strdef gra_estimulo
+objref gra_est[100]
+proc grafico_estimulo(){local i
+x=x+1
+i=x-1
+gra_est[i]=new Graph()
+gra_est[i].size(0,tstop,-2.3,20)
+for j=0,aa-1{
+sprint(gra_estimulo,"icl[%d].i",j)
+gra_est[i].addexpr("",gra_estimulo,1,2)
+}
+gra_est[i].xaxis()
+gra_est[i].yaxis()
+gra_est[i].save_name("graphList[0].")
+graphList[0].append(gra_est[i])
+}
+grafico_estimulo()
+Graph[0].label(0.1, 0.93, "      STIMULUS", 2, 1, -0.5, 0.5, 6)
+Graph[0].label(0.09, 0.85, "I(nA)", 2, 1, -0.1, 0.3, 1)
+Graph[0].label(0.92,0.092, "t(ms)", 2, 1, 0.5, -1.4, 1)
+box_estim.intercept(0)
+//---------------------------------------------------------------------------------------//
+proc valores_defecto_estimulo(){
+num_estim=1
+icl[0].amp=0.8
+icl[0].dur=0.2
+icl[0].del=2
+t_interp=0
+}
+///////////////////////////////////////////////////////////////////////////////////////////
+//----------------------------------PARÃMETROS INICIALES---------------------------------//----Block 4
+/*
+AquÃ­ se determina el tiempo total de la simulaciÃ³n que se simularÃ¡ (tstop), el paso de
+paso de tiempo mÃ­nimo (dt), la temperatura a la que se realizara la simulaciÃ³n en grados
+celsius (celsius) y el voltaje inicial (v_init).
+*/
+proc param_inicio(){
+dt=$1
+tstop=$2
+celsius=$3
+v_init=$4
+}
+proc param_inicio_def(){
+dt=0.025
+tstop=5
+celsius=6.3
+v_init=-65
+}
+//---------------------------------------------------------------------------------------//
+///////////////////////////////////////////////////////////////////////////////////////////
+//--------------------VALORES POR DEFECTO PARA TODOS LOS PARAMETROS----------------------//
+/*
+Para hacer una prueba rÃ¡pida del funcionamiento de este software, se requieren el 
+procedimiento (valores_defecto()) que genere de forma inmediata los valores de todos los 
+parÃ¡metros del panel.
+*/
+proc valores_defecto(){
+soma.L=50
+soma.diam=2.7
+soma.nseg=1000
+gnabar_hh=0.12
+gkbar_hh=0.036
+gl_hh=0.0003
+cm=1
+Ra=35.4
+tstop=8
+v_init=-67.56
+num_estim=1
+icl[0].amp=0.8
+icl[0].dur=0.2
+icl[0].del=2
+t_interp=0
+}
+//---------------------------------------------------------------------------------------//
+///////////////////////////////////////////////////////////////////////////////////////////----Block 5
+//----------------------------------------GRAFICOS---------------------------------------//
+objref box_general
+box_general=new HBox()
+box_general.intercept(1)
+/*
+En esta secciÃ³n se realizan los grÃ¡ficos de la evoluciÃ³n temporal de las variables que se 
+mencionan a continuaciÃ³n:
+*/
+objref gra_izquierdo[100]
+objref box_izquierdo
+box_izquierdo=new VBox()
+box_izquierdo.intercept(1)
+elct_med=0.9//UbicaciÃ³n del electrodo de mediciÃ³n (ext.inicial=0; ext.final=1)
+//------------------------------------------------Codigo para Grafico potencial de membrana
+objref gra_v[100]
+
+objref box_v
+box_v=new VBox()
+box_v.intercept(1)
+
+proc grafico_v(){local i
+x=x+1
+i=x-1
+gra_v[i]=new Graph()
+gra_v[i].size(0,tstop,-70,50)
+gra_v[i].addexpr("Vm(0.9)","soma.v(elct_med)",3,2)
+gra_v[i].xaxis()
+gra_v[i].yaxis()
+gra_v[i].save_name("graphList[0].")
+graphList[0].append(gra_v[i])
+}
+grafico_v()
+Graph[1].label(0.1, 0.93, "1. MEMBRANE POTENTIAL", 2, 1, 0, 0, 6)
+Graph[1].label(0.09, 0.87, "Vm(mV)", 2, 1, 0, 0, 1)
+Graph[1].label(0.93,0.58, "t(ms)", 2, 1, 0, 0, 1)
+box_v.intercept(0)
+box_v.map("MEMBRANE POTENTIAL",125,140,400,280)
+//-----------------------------------Codigo para Grafico corrientes a travÃ©s de la membrana
+objref gra_i[100]
+
+objref box_i
+box_i=new VBox()
+box_i.intercept(1)
+
+proc grafico_i(){local i
+
+x=x+1
+i=x-1
+gra_i[i]=new Graph()
+gra_i[i].size(0,tstop,-70,50)
+gra_i[i].addexpr("INa(0.9)","soma.ina(elct_med)",2,2)
+gra_i[i].addexpr("IK(0.9)","soma.ik(elct_med)",3,2)
+gra_i[i].addexpr("Ileak(0.9)","soma.i_pas(elct_med)",4,2)
+gra_i[i].addexpr("Icap(0.9)","soma.i_cap(elct_med)",5,2)
+gra_i[i].addexpr("Im(0.9)","(soma.ina(elct_med)+soma.ik(elct_med)+soma.i_pas(elct_med)+soma.i_cap(elct_med))",1,2)
+gra_i[i].xaxis()
+gra_i[i].yaxis()
+gra_i[i].save_name("graphList[0].")
+graphList[0].append(gra_i[i])
+}
+grafico_i()
+Graph[2].label(0.1, 0.93, "3. CURRENTS ACROSS CELL MEMBRANE", 2, 1, 0, 0, 6)
+Graph[2].label(0.09, 0.87, "I(mA)", 2, 1, 0, 0, 1)
+Graph[2].label(0.92,0.52, "t(ms)", 2, 1, 0, 0, 1)
+box_i.intercept(0)
+box_i.map("CURRENTS ACROSS CELL MEMBRANE",125,140,400,280)
+//-----------------------------------------Codigo para Grafico probabilidades de activaciÃ³n
+//                                    de sensores de potencial y canales de sodio y potasio
+objref gra_p[100]
+
+objref box_p
+box_p=new VBox()
+box_p.intercept(1)
+
+proc grafico_p(){local i
+x=x+1
+i=x-1
+gra_p[i]=new Graph()
+gra_p[i].size(0,tstop,-70,50)
+gra_p[i].addexpr("m(0.9)","soma.m_hh(elct_med)",1,2)
+gra_p[i].addexpr("m^3(0.9)","((soma.m_hh(elct_med))*(soma.m_hh(elct_med))*(soma.m_hh(elct_med)))",2,2)
+gra_p[i].addexpr("h(0.9)","soma.h_hh(elct_med)",3,2)
+gra_p[i].addexpr("m^3h(0.9)","((soma.m_hh(elct_med))*(soma.m_hh(elct_med))*(soma.m_hh(elct_med))*(soma.h_hh(elct_med)))",4,2)
+gra_p[i].addexpr("n(0.9)","soma.n_hh(elct_med)",5,2)
+gra_p[i].addexpr("n^4(0.9)","((soma.n_hh(elct_med))*(soma.n_hh(elct_med))*(soma.n_hh(elct_med))*(soma.n_hh(elct_med)))",6,2)
+gra_p[i].xaxis()
+gra_p[i].yaxis()
+gra_p[i].save_name("graphList[0].")
+graphList[0].append(gra_p[i])
+}
+grafico_p()
+Graph[3].label(0.1, 0.93, "5. GATING VARIABLES", 2, 1, 0, 0, 6)
+Graph[3].label(0.09, 0.85, "Probability", 2, 1, 0, 0, 1)
+Graph[3].label(0.92,0.092, "t(ms)", 2, 1, 0, 0, 1)
+box_p.intercept(0)
+box_p.map("GATING VARIABLES",125,140,400,280)
+//---------------------------------------------------------------------------------------//
+box_izquierdo.intercept(0)
+box_izquierdo.map("GRAFICOS",125,140,400,815)
+//---------------------------------------------------------------------------------------//
+objref box_derecho_shape
+box_derecho_shape=new VBox()
+box_derecho_shape.intercept(1)
+//---------------------------------------------SECCIÃ“N GRAFICO DEL AXÃ“N Y PUNTO DE ESTIMULO
+objref estimulo_marca
+soma estimulo_marca=new IClamp(0)
+estimulo_marca.amp=0
+objref registro_marca
+registro_marca=new IClamp(0.9)
+registro_marca.amp=0
+
+objref box_shape
+box_shape=new VBox()
+box_shape.intercept(1)
+
+xpanel("soma",0)
+xlabel("soma (Square point: Stimulus / Triangular point: Record)")
+xpanel()
+objref S
+S=new Shape()
+S.show(0)
+Shape[0].color_all(4)
+Shape[0].point_mark(estimulo_marca,1,5,9)
+Shape[0].point_mark(registro_marca,1,6,9)
+
+box_shape.intercept(0)
+box_shape.map("PASSIVE PARAMETERS",125,140,535,80)
+//---------------------------------------------------------------------------------------//
+objref box_derecho
+box_derecho=new HBox()
+box_derecho.intercept(1)
+//---------------------------------------------------------------------------------------//
+objref box_derecho1
+box_derecho1=new VBox()
+box_derecho1.intercept(1)
+//---------------------------------------------------------------------------------------//Block 6
+proc inicio(){
+run()
+
+ena=(8.314*(273.15+celsius)/96485.3)*(log(nao/nai))*1000
+ek=(8.314*(273.15+celsius)/96485.3)*(log(ko/ki))*1000
+Rm=1/gl_hh//en Ohm-cm2
+LAMBDA = sqrt(Rm*soma.diam/(4*Ra))*(1e-2)//en cm
+TAU=(cm*Rm)*(1e-3)//en ms
+VELOCIDAD=(LAMBDA/TAU)*10//en m/s
+
+if(((aa*icl[0].dur+(aa-1)*t_interp)>=2)&&(num_estim>1)){
+frecuencia=(aa/(aa*icl[0].dur+(aa-1)*t_interp))*(1e3)
+}
+if((aa*icl[0].dur+(aa-1)*t_interp)<=1){
+frecuencia=0
+}
+
+/*
+if(((aa*icl[0].dur+(aa-1)*t_interp)>=2)&&(num_estim>1)){
+frecuencia=(aa/(aa*icl[0].dur+(aa-1)*t_interp))*(1e3)
+}else{
+frecuencia=0
+}
+*/
+Shape[0].color_all(4)
+Graph[0].exec_menu("View...")
+Graph[0].exec_menu("View = plot")
+Graph[1].exec_menu("View...")
+Graph[1].exec_menu("View = plot")
+Graph[2].exec_menu("View...")
+Graph[2].exec_menu("View = plot")
+Graph[3].exec_menu("View...")
+Graph[3].exec_menu("View = plot")
+}
+
+strdef imagen_gra
+contador_imagenes=0
+proc salvar_imagen(){
+contador_imagenes+=1
+sprint(imagen_gra,"Image%d",contador_imagenes)
+print_session(0, imagen_gra)
+}
+///////////////////////////////////////////////////////////////////////////////////////////
+//--------------------------------------SECCION DE PANEL---------------------------------//----Block 7
+/*
+En esta secciÃ³n se diseÃ±a el PANEL soma ROJO a partir de los procedimientos (proc) 
+definidos en las secciones anteriores de este cÃ³digo. este panel consta de 7 secciones 
+mencionadas a continuaciÃ³n.
+*/
+//---------------------------------------------------------------------------------------//
+box_estim.map("",125,140,265,145)
+//---------------------------------------------------------------------------------------//
+objref box_derecho1bajo
+box_derecho1bajo=new VBox()
+box_derecho1bajo.intercept(1)
+//-------------------------------------------------------SECCIÃ“N PARÃMETROS DE ESTIMULACIÃ“N
+xpanel("STIMULUS PARAMETERS",0)
+xlabel("STIMULUS PARAMETERS")
+xvalue("NoStim","num_estim",1,"estimulo(icl[0].amp,icl[0].dur,icl[0].del,t_interp,num_estim)",0,0)
+xvalue("Amp(nA)","icl[0].amp",1,"estimulo(icl[0].amp,icl[0].dur,icl[0].del,t_interp,num_estim)",0,0)
+xvalue("Dur(ms)","icl[0].dur",1,"estimulo(icl[0].amp,icl[0].dur,icl[0].del,t_interp,num_estim)",0,0)
+xvalue("Delay(ms)","icl[0].del",1,"estimulo(icl[0].amp,icl[0].dur,icl[0].del,t_interp,num_estim)",0,0)
+xvalue("tintp(ms)","t_interp",1,"estimulo(icl[0].amp,icl[0].dur,icl[0].del,t_interp,num_estim)",0,0)
+xfixedvalue("*fe(Hz)","frecuencia")
+xbutton("DEFAULT VALUES","valores_defecto_estimulo()")
+//---------------------------------------------------------------------PAREMETROS derecho_shapeES
+xlabel("GEOMETRIC PARAMETERS")
+xvalue("L","soma.L",1,"geometria(soma.L,soma.diam,soma.nseg)",0,0)
+xvalue("diam","soma.diam",1,"geometria(soma.L,soma.diam,soma.nseg)",0,0)
+xvalue("Nseg","soma.nseg",1,"geometria(soma.L,soma.diam,soma.nseg)",0,0)
+xfixedvalue("*Ac(um2)","PI*(soma.diam)*(soma.L)")
+xfixedvalue("*Vc(um3)","(PI*(soma.diam)*(soma.diam)*(soma.L))/4")
+xbutton("DEFAULT VALUES","geometria_def()")
+//-----------------------------------------------------------SECCIÃ“N PARÃMETROS GEOMÃ‰TRICOS
+xlabel("GENERAL PARAMETERS")
+xvalue("dt","dt",1,"param_inicio(dt,tstop,celsius,v_init)",0,0)
+xvalue("ts","tstop",1,"param_inicio(dt,tstop,celsius,v_init)",0,0)
+xvalue("T","celsius",1,"param_inicio(dt,tstop,celsius,v_init)",0,0)
+xvalue("Vinitial","v_init",1,"param_inicio(dt,tstop,celsius,v_init)",0,0)
+xbutton("DEFAULT VALUES","param_inicio_def()")
+xpanel()
+//---------------------------------------------------------------------------------------//
+box_derecho1bajo.intercept(0)
+box_derecho1bajo.map("",125,140,265,590)
+//---------------------------------------------------------------------------------------//
+box_derecho1.intercept(0)
+box_derecho1.map("",125,140,265,735)
+//---------------------------------------------------------------------------------------//
+objref box_derecho2
+box_derecho2=new VBox()
+box_derecho2.intercept(1)
+//---------------------------------------------------------------SECCIÃ“N PARÃMETROS PASIVOS
+xpanel("PASSIVE PARAMETERS",0)
+xlabel("PASSIVE PARAMETERS")
+xvalue("GL","gl_hh",1,"param_pas(gl_hh,cm,Ra)",0,0)
+xvalue("Cm","cm",1,"param_pas(gl_hh,cm,Ra)",0,0)
+xvalue("Ra","Ra",1,"param_pas(gl_hh,cm,Ra)",0,0)
+xfixedvalue("*Rm(ohm-cm2)","Rm")
+xfixedvalue("*Lambda(cm)","LAMBDA")
+xfixedvalue("*Tau(ms)","TAU")
+xfixedvalue("*v(m/s)","VELOCIDAD")
+xfixedvalue("*EL","e_pas")
+xbutton("DEFAULT VALUES","defecto_pas()")
+xbutton("RESET","reset_pas()")
+//---------------------------------------------------------------SECCIÃ“N PARÃMETROS ACTIVOS
+xlabel("ACTIVE PARAMETERS")
+xvalue("GNa","gnabar_hh",1,"param_activos(gnabar_hh,gkbar_hh,nao,nai,ko,ki)",0,0)
+xvalue("GK","gkbar_hh",1,"param_activos(gnabar_hh,gkbar_hh,nao,nai,ko,ki)",0,0)
+xvalue("[Na]ext","nao",1,"param_activos(gnabar_hh,gkbar_hh,nao,nai,ko,ki)",0,0)
+xvalue("[Na]int","nai",1,"param_activos(gnabar_hh,gkbar_hh,nao,nai,ko,ki)",0,0)
+xvalue("[K]ext","ko",1,"param_activos(gnabar_hh,gkbar_hh,nao,nai,ko,ki)",0,0)
+xvalue("[K]int","ki",1,"param_activos(gnabar_hh,gkbar_hh,nao,nai,ko,ki)",0,0)
+xfixedvalue("*ENa","ena")
+xfixedvalue("*EK","ek")
+xbutton("DEFAULT VALUES","defecto_activos()")
+xbutton("RESET","reset_activos()")
+//---------------------------------------------------------------------INICIO DE SIMULACIÃ“N
+xlabel("START SIMULATION")
+xbutton("DEFAULT VALUES","valores_defecto()")
+xbutton("SAVE IMAGE","salvar_imagen()")
+xbutton("*********RUN*********","inicio()")
+xpanel()
+//---------------------------------------------------------------------------------------//
+box_derecho2.intercept(0)
+box_derecho2.map("",125,140,270,735)
+//---------------------------------------------------------------------------------------//
+box_derecho.intercept(0)
+box_derecho.map("",125,140,535,735)
+//---------------------------------------------------------------------------------------//
+box_derecho_shape.intercept(0)
+box_derecho_shape.map("SENB: SIMULADOR DE LECTROFISIOLOGIA NEURONAL BASICA",125,140,535,815)
+//--------------------------------------------------------------------------------------//
+box_general.intercept(0)
+box_general.map("SENB: SIMULADOR DE LECTROFISIOLOGIA NEURONAL BASICA",135,110,930,815)
+//////////////////////////////////////////////////////////////////////////////////////////
+//--------------------------------DISEÃ‘O DE BOTÃ“N DE SEGURIDA---------------------------//
+/*
+La funciÃ³n de esta ventana es tener un botÃ³n que rehaga el PANEL soma ROJO, cuando por
+error se cierre.
+*/
+proc re_hacer(){
+box_general.map("SENB: SIMULADOR DE LECTROFISIOLOGIA NEURONAL BASICA",135,110,930,815)
+}
+objref box_rehacer
+box_rehacer=new VBox()
+box_rehacer.intercept(1)
+xpanel("",0)
+xbutton("REDO SENB","re_hacer()")
+xpanel()
+box_rehacer.intercept(0)
+box_rehacer.map("REDO SENB",0,0,130,60)
+//--------------------------------------------------------------------------------------//
+//////////////////////////////////////////////////////////////////////////////////////////
+//--------------------------------------FIN DE CODIGO-----------------------------------//
+/*
+cd Documentos/softwares_propios/SENB
+nrngui SENB3.hoc
+*/
