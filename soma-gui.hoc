@@ -40,10 +40,10 @@ de sodio y potasio al estilo Hodgkin y Huxley incorporados en NEURON.
 */
 soma insert hh
 soma insert pas
-nao=440
-nai=50
-ko=20
-ki=400
+nao=140
+nai=10
+ko=2.5
+ki=54.4
 proc param_activos(){
 gnabar_hh=$1
 gkbar_hh=$2
@@ -77,7 +77,7 @@ Las propiedades pasivas se refieren a la conductancia de fuga o leak
 */
 gl_hh=0.0003
 forall cm=1
-forall Ra=1
+forall Ra=35.4
 
 ena=(8.314*(273.15+celsius)/96485.3)*(log(nao/nai))*1000
 ek=(8.314*(273.15+celsius)/96485.3)*(log(ko/ki))*1000
@@ -171,9 +171,9 @@ box_estim.intercept(0)
 //---------------------------------------------------------------------------------------//
 proc valores_defecto_estimulo(){
 num_estim=1
-icl[0].amp=0.8
-icl[0].dur=0.2
-icl[0].del=2
+icl[0].amp=1
+icl[0].dur=0.1
+icl[0].del=1
 t_interp=0
 }
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -204,8 +204,8 @@ procedimiento (valores_defecto()) que genere de forma inmediata los valores de t
 parÃ¡metros del panel.
 */
 proc valores_defecto(){
-soma.L=50
-soma.diam=2.7
+soma.L=25
+soma.diam=25
 soma.nseg=1000
 gnabar_hh=0.12
 gkbar_hh=0.036
@@ -301,11 +301,11 @@ x=x+1
 i=x-1
 gra_p[i]=new Graph()
 gra_p[i].size(0,tstop,-70,50)
-gra_p[i].addexpr("m(0.9)","soma.m_hh(elct_med)",1,2)
+//gra_p[i].addexpr("m(0.9)","soma.m_hh(elct_med)",1,2)
 gra_p[i].addexpr("m^3(0.9)","((soma.m_hh(elct_med))*(soma.m_hh(elct_med))*(soma.m_hh(elct_med)))",2,2)
-gra_p[i].addexpr("h(0.9)","soma.h_hh(elct_med)",3,2)
+//gra_p[i].addexpr("h(0.9)","soma.h_hh(elct_med)",3,2)
 gra_p[i].addexpr("m^3h(0.9)","((soma.m_hh(elct_med))*(soma.m_hh(elct_med))*(soma.m_hh(elct_med))*(soma.h_hh(elct_med)))",4,2)
-gra_p[i].addexpr("n(0.9)","soma.n_hh(elct_med)",5,2)
+//gra_p[i].addexpr("n(0.9)","soma.n_hh(elct_med)",5,2)
 gra_p[i].addexpr("n^4(0.9)","((soma.n_hh(elct_med))*(soma.n_hh(elct_med))*(soma.n_hh(elct_med))*(soma.n_hh(elct_med)))",6,2)
 gra_p[i].xaxis()
 gra_p[i].yaxis()
